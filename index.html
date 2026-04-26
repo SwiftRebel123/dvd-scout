@@ -685,11 +685,15 @@ function reset() {
   clearSession();
   document.getElementById('upload-zone').style.display = 'block';
   document.getElementById('results').style.display = 'none';
+  document.getElementById('results-body').innerHTML = '';
+  document.getElementById('bundles').style.display = 'none';
+  document.getElementById('lots-results').style.display = 'none';
   document.getElementById('done-btn').style.display = 'none';
   document.getElementById('scan-more-btn').style.display = 'none';
   document.getElementById('scan-count').style.display = 'none';
   document.getElementById('clear-session-btn').style.display = 'none';
   document.getElementById('status').style.display = 'none';
+  document.querySelectorAll('input[type=file]').forEach(function(el) { el.value = ''; });
 }
 
 document.addEventListener('click', function(e) {
