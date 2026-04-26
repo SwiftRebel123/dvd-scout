@@ -279,7 +279,7 @@ async function scanShelf(imageBase64, mediaType) {
   var status = document.getElementById('status');
   var statusText = document.getElementById('status-text');
   status.style.display = 'block';
-  statusText.textContent = 'Scanning shelf ' + (scanCount + 1) + '...';
+  statusText.textContent = 'Scanning shelf ' + (scanCount + 1) + ' (this may take 30-60 seconds)...';
   document.getElementById('done-btn').style.display = 'none';
   document.getElementById('scan-more-btn').style.display = 'none';
 
@@ -377,12 +377,14 @@ function makeRow(item, info, idx) {
   var studioLine = studio ? '<span class="title-studio">' + studio + (author ? ' · ' + author : '') + '</span>' : '';
   var saleLine = salePrice ? '<span class="title-sold">✓ You sold for $' + salePrice + '</span>' : '';
   var dupLine = dup ? '<span class="title-duplicate">⚠ possible duplicate</span>' : '';
+  var correctedLine = item.corrected ? '<span class="title-studio" style="color:#f59e0b;">✏ corrected by AI</span>' : '';
+  var uncertainLine = item.low_confidence && !item.corrected ? '<span class="title-studio" style="color:#f59e0b;">? verify this title</span>' : '';
 
   row.innerHTML =
     '<div class="title-main">' +
       '<div class="title-info">' +
         '<span class="title-name">' + title + '</span>' +
-        studioLine + saleLine + dupLine +
+        studioLine + saleLine + dupLine + correctedLine + uncertainLine +
       '</div>' +
       '<div class="row-actions">' +
         '<span class="badge ' + info.cls + '">' + info.badge + '</span>' +
