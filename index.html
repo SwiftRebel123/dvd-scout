@@ -375,10 +375,10 @@ function makeRow(item, info, idx) {
       '<input type="text" id="edit-title-items-' + idx + '" value="' + title.replace(/"/g,'&quot;') + '" placeholder="Title" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
       '<input type="text" id="edit-studio-items-' + idx + '" value="' + studio.replace(/"/g,'&quot;') + '" placeholder="Studio / Publisher" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
       '<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap;">' +
-        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ',\"HOT\")">HOT</button>' +
-        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ',\"WORTH_IT\")">WORTH IT</button>' +
-        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ',\"SKIP\")">SKIP</button>' +
-        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ',\"NOT_SURE\")">NOT SURE</button>' +
+        '<button class="edit-cat-btn" data-idx="' + idx + '" data-cat="HOT" style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;">HOT</button>' +
+        '<button class="edit-cat-btn" data-idx="' + idx + '" data-cat="WORTH_IT" style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;">WORTH IT</button>' +
+        '<button class="edit-cat-btn" data-idx="' + idx + '" data-cat="SKIP" style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;">SKIP</button>' +
+        '<button class="edit-cat-btn" data-idx="' + idx + '" data-cat="NOT_SURE" style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;">NOT SURE</button>' +
       '</div>' +
       '<div style="display:flex;gap:6px;">' +
         '<button style="flex:1;padding:7px;border-radius:6px;border:none;background:var(--hot);color:#fff;font-size:12px;font-weight:600;cursor:pointer;" onclick="saveEdit(' + idx + ')">Save</button>' +
@@ -523,6 +523,14 @@ function reset() {
   document.getElementById('scan-count').style.display = 'none';
   document.getElementById('status').style.display = 'none';
 }
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('edit-cat-btn')) {
+    var idx = parseInt(e.target.getAttribute('data-idx'));
+    var cat = e.target.getAttribute('data-cat');
+    saveEdit(idx, cat);
+  }
+});
 
 loadSession();
 loadSales();
