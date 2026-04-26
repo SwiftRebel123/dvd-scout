@@ -638,7 +638,9 @@ function renderBundles() {
 
   series.forEach(function(s) {
     var matches = all.filter(function(item) {
-      var t = (item.title || item).toLowerCase();
+      var t = (item.title || '');
+      if (typeof t !== 'string' || !t.trim()) return false;
+      t = t.toLowerCase();
       return s.keywords.some(function(k) { return t.includes(k); });
     });
     if (matches.length >= 2) bundles.push({ name: s.name, items: matches });
