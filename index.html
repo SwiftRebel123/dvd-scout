@@ -173,6 +173,9 @@
     <div id="results-body"></div>
     <div id="bundles"></div>
     <button class="copy-btn" id="copy-btn" onclick="copyList()">copy full list</button>
+    <button class="copy-btn" id="lots-btn" onclick="suggestLots()" style="margin-top:8px;border-color:var(--worth);color:var(--worth);">suggest lots ↗</button>
+    <div id="lots-status" style="display:none;text-align:center;padding:12px;font-size:12px;color:var(--text-secondary);font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-top:8px;"><span class="dot"></span> Analyzing titles...</div>
+    <div id="lots-results" style="display:none;margin-top:12px;"></div>
   </div>
 </div>
 
@@ -484,6 +487,88 @@ async function logSale(idx) {
     renderResults();
   } catch(e) {
     alert('Could not save sale. Try again.');
+  }
+}
+
+async function suggestLots() {
+  var items = accumulatedTitles.items || [];
+  if (!items.length) return;
+
+  var btn = document.getElementById('lots-btn');
+  var status = document.getElementById('lots-status');
+  var resultsEl = document.getElementById('lots-results');
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  status.style.display = 'block';
+  resultsEl.style.display = 'none';
+
+  var titleList = items.map(function(i) {
+    return (i.title || '') + (i.studio ? ' (' + i.studio + ')' : '');
+  }).filter(Boolean).join('\n');
+
+  var prompt = 'You are an eBay reseller expert. Here is a list of ' + (category === 'dvd' ? 'DVDs' : 'books') + ':\n\n' + titleList + '\n\nFor each title, identify its genre. Then suggest the best lot groupings for eBay resale — which titles should be sold together and why. Consider series, genre, director, actor, theme, and audience. For each suggested lot give it a name, list the titles, and estimate a selling price range for the lot. Also flag any individual titles that are worth more sold alone.\n\nRespond ONLY with valid JSON, no markdown:\n{"lots":[{"name":"Lot Name","titles":["Title1","Title2"],"reason":"Why these go together","price_range":"$X-$Y"}],"sell_alone":[{"title":"Title","reason":"Why sell alone","price_range":"$X-$Y"}]}';
+
+  try {
+    var resp = await fetch(SERVER + '/suggest-lots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titles: titleList, category: category })
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderLots(data);
+  } catch(e) {
+    status.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = 'suggest lots ↗';
+    alert('Could not get lot suggestions. Try again.');
+    return;
+  }
+
+  status.style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = 'suggest lots ↗';
+}
+
+function renderLots(data) {
+  var el = document.getElementById('lots-results');
+  el.style.display = 'block';
+  el.innerHTML = '';
+
+  if (data.sell_alone && data.sell_alone.length) {
+    var h = document.createElement('div');
+    h.className = 'section-label';
+    h.innerHTML = 'Sell individually <span class="count-pill">' + data.sell_alone.length + '</span>';
+    el.appendChild(h);
+
+    data.sell_alone.forEach(function(item) {
+      var card = document.createElement('div');
+      card.className = 'bundle-card';
+      card.style.borderColor = 'var(--hot)';
+      card.innerHTML = '<div class="bundle-title" style="color:var(--hot);">' + item.title + ' — ' + (item.price_range || '') + '</div>' +
+        '<div class="bundle-items">' + (item.reason || '') + '</div>' +
+        '<a class="bundle-link" href="' + ebayUrl(item.title, '', true) + '" target="_blank">sold ↗</a>';
+      el.appendChild(card);
+    });
+  }
+
+  if (data.lots && data.lots.length) {
+    var h2 = document.createElement('div');
+    h2.className = 'section-label';
+    h2.innerHTML = 'Suggested lots <span class="count-pill">' + data.lots.length + '</span>';
+    el.appendChild(h2);
+
+    data.lots.forEach(function(lot) {
+      var card = document.createElement('div');
+      card.className = 'bundle-card';
+      var searchQ = lot.name + ' ' + (category === 'dvd' ? 'DVD lot' : 'book lot');
+      card.innerHTML = '<div class="bundle-title">' + lot.name + ' — ' + (lot.price_range || '') + '</div>' +
+        '<div class="bundle-items">' + (lot.titles || []).join(', ') + '</div>' +
+        '<div class="bundle-items" style="margin-top:4px;color:var(--text-tertiary);">' + (lot.reason || '') + '</div>' +
+        '<a class="bundle-link" style="margin-top:6px;display:inline-block;" href="https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(searchQ) + '&LH_Sold=1&LH_Complete=1&_sop=15" target="_blank">sold lots ↗</a>';
+      el.appendChild(card);
+    });
   }
 }
 
