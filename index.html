@@ -150,11 +150,11 @@
     <div class="upload-btns">
       <label class="upload-btn">
         📷 Camera
-        <input type="file" accept="image/*" capture="environment" onchange="handleFile(this.files[0])">
+        <input type="file" accept="image/*" capture="environment" onchange="handleFile(this.files[0], this)">
       </label>
       <label class="upload-btn">
         🖼️ Gallery
-        <input type="file" accept="image/*" onchange="handleFile(this.files[0])">
+        <input type="file" accept="image/*" onchange="handleFile(this.files[0], this)">
       </label>
     </div>
   </div>
@@ -266,8 +266,9 @@ function isDuplicate(title) {
   }).length > 1;
 }
 
-function handleFile(file) {
+function handleFile(file, inputEl) {
   if (!file) return;
+  if (inputEl) inputEl.value = '';
   var reader = new FileReader();
   reader.onload = function(ev) {
     var base64 = ev.target.result.split(',')[1];
