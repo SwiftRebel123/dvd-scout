@@ -160,7 +160,7 @@
   </div>
 
   <div id="scan-count"></div>
-  <button id="clear-session-btn" onclick="clearSessionBtn()" style="display:none;width:100%;padding:8px;border-radius:8px;border:1px solid var(--border-light);background:transparent;font-size:12px;color:var(--text-tertiary);cursor:pointer;margin-bottom:8px;font-family:'DM Mono',monospace;">✕ clear session</button>
+  <button id="clear-session-btn" onclick="clearSessionBtn()" style="display:none;width:100%;padding:8px;border-radius:8px;border:1px solid var(--border-light);background:transparent;font-size:12px;color:var(--text-tertiary);cursor:pointer;margin-bottom:8px;font-family:monospace;">✕ clear session</button>
   <button class="btn-primary" id="done-btn" onclick="showResults()">Done — Show Results →</button>
   <button class="btn-secondary" id="scan-more-btn" onclick="scanMore()">+ Scan another shelf</button>
   <div id="status"><span class="dot"></span><span id="status-text">Scanning...</span></div>
@@ -174,7 +174,7 @@
     <div id="bundles"></div>
     <button class="copy-btn" id="copy-btn" onclick="copyList()">copy full list</button>
     <button class="copy-btn" id="lots-btn" onclick="suggestLots()" style="margin-top:8px;border-color:var(--worth);color:var(--worth);">suggest lots ↗</button>
-    <div id="lots-status" style="display:none;text-align:center;padding:12px;font-size:12px;color:var(--text-secondary);font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-top:8px;"><span class="dot"></span> Analyzing titles...</div>
+    <div id="lots-status" style="display:none;text-align:center;padding:12px;font-size:12px;color:var(--text-secondary);font-family:monospace;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-top:8px;"><span class="dot"></span> Analyzing titles...</div>
     <div id="lots-results" style="display:none;margin-top:12px;"></div>
   </div>
 </div>
@@ -421,7 +421,7 @@ function makeRow(item, info, idx) {
         '<button style="padding:7px 12px;border-radius:6px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;" onclick="toggleLog(' + idx + ')">Cancel</button>' +
       '</div>' +
     '<div class="split-panel" id="split-items-' + idx + '" style="display:none;padding:8px 10px;border-top:1px solid var(--border);background:#111;">' +
-      '<div style="font-size:11px;color:var(--text-tertiary);font-family:'DM Mono',monospace;margin-bottom:6px;">Split into two titles:</div>' +
+      '<div style="font-size:11px;color:var(--text-tertiary);font-family:monospace;margin-bottom:6px;">Split into two titles:</div>' +
       '<input type="text" id="split-a-items-' + idx + '" value="' + title.replace(/"/g,'&quot;') + '" placeholder="First title" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
       '<input type="text" id="split-b-items-' + idx + '" value="" placeholder="Second title" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
       '<div style="display:flex;gap:6px;">' +
