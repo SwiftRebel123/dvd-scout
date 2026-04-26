@@ -176,20 +176,20 @@
 </div>
 
 <script>
+
 var SERVER = 'https://dvd-scout-server-production.up.railway.app';
 var category = 'dvd';
 var scanCount = 0;
-var accumulatedTitles = { hot: [], worth_it: [], skip: [], not_sure: [] };
+var accumulatedTitles = { items: [] };
 var salesHistory = [];
 var SESSION_KEY = 'shelfscout_session';
 
-// Load session from localStorage
 function loadSession() {
   try {
     var saved = localStorage.getItem(SESSION_KEY);
     if (saved) {
       var data = JSON.parse(saved);
-      accumulatedTitles = data.titles || { hot: [], worth_it: [], skip: [], not_sure: [] };
+      accumulatedTitles = data.titles || { items: [] };
       scanCount = data.scanCount || 0;
       category = data.category || 'dvd';
       if (scanCount > 0) {
@@ -203,33 +203,22 @@ function loadSession() {
 
 function saveSession() {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      titles: accumulatedTitles,
-      scanCount: scanCount,
-      category: category
-    }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ titles: accumulatedTitles, scanCount: scanCount, category: category }));
   } catch(e) {}
 }
 
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
-// Load sales history from server
 async function loadSales() {
   try {
     var resp = await fetch(SERVER + '/sales');
     salesHistory = await resp.json();
-  } catch(e) {
-    console.log('Could not load sales history');
-  }
+  } catch(e) { console.log('Could not load sales history'); }
 }
 
 function getSalePrice(title) {
   var t = title.toLowerCase().trim();
-  var match = salesHistory.find(function(s) {
-    return s.title.toLowerCase().trim() === t;
-  });
+  var match = salesHistory.find(function(s) { return s.title.toLowerCase().trim() === t; });
   return match ? match.price : null;
 }
 
@@ -243,14 +232,13 @@ function setCategory(cat) {
 function updateScanCount() {
   var el = document.getElementById('scan-count');
   el.style.display = 'block';
-  el.textContent = scanCount + ' shelf' + (scanCount > 1 ? 's' : '') + ' scanned — ' +
-    (accumulatedTitles.hot.length + accumulatedTitles.worth_it.length + accumulatedTitles.skip.length + accumulatedTitles.not_sure.length) + ' titles found';
+  el.textContent = scanCount + ' shelf' + (scanCount > 1 ? 's' : '') + ' scanned — ' + (accumulatedTitles.items ? accumulatedTitles.items.length : 0) + ' titles found';
 }
 
 function isDuplicate(title) {
   var t = title.toLowerCase().trim();
-  var all = accumulatedTitles.hot.concat(accumulatedTitles.worth_it, accumulatedTitles.skip, accumulatedTitles.not_sure);
-  return all.filter(function(item) { return item.title.toLowerCase().trim() === t; }).length > 1;
+  var all = accumulatedTitles.items || [];
+  return all.filter(function(item) { return (item.title || item).toLowerCase().trim() === t; }).length > 1;
 }
 
 function handleFile(file) {
@@ -282,14 +270,9 @@ async function scanShelf(imageBase64, mediaType) {
     var data = await resp.json();
     if (data.error) throw new Error(data.error);
 
-    // Merge into accumulated titles
-    ['hot', 'worth_it', 'skip', 'not_sure'].forEach(function(key) {
-      if (data[key]) {
-        data[key].forEach(function(item) {
-          accumulatedTitles[key].push(item);
-        });
-      }
-    });
+    if (data.items) {
+      data.items.forEach(function(item) { accumulatedTitles.items.push(item); });
+    }
 
     scanCount++;
     saveSession();
@@ -307,9 +290,7 @@ async function scanShelf(imageBase64, mediaType) {
   document.getElementById('scan-more-btn').style.display = 'block';
 }
 
-function scanMore() {
-  document.getElementById('upload-zone').style.display = 'block';
-}
+function scanMore() { document.getElementById('upload-zone').style.display = 'block'; }
 
 function ebayUrl(title, studio, sold) {
   var q = title + (studio ? ' ' + studio : '') + (category === 'dvd' ? ' DVD' : ' book');
@@ -327,42 +308,38 @@ function showResults() {
   document.getElementById('results').style.display = 'block';
 }
 
+function getCatInfo(cat) {
+  var c = (cat || '').toUpperCase();
+  if (c === 'HOT') return { badge:'HOT', cls:'badge-hot', rowCls:'hot-row' };
+  if (c === 'WORTH_IT') return { badge:'WORTH IT', cls:'badge-ok', rowCls:'' };
+  if (c === 'NOT_SURE') return { badge:'?', cls:'badge-unsure', rowCls:'not-sure-row' };
+  return { badge:'SKIP', cls:'badge-skip', rowCls:'' };
+}
+
 function renderResults() {
   var body = document.getElementById('results-body');
   body.innerHTML = '';
+  var items = accumulatedTitles.items || [];
 
-  var sections = [
-    { key:'hot', label:'Pull these first', badge:'HOT', cls:'badge-hot', rowCls:'hot-row' },
-    { key:'worth_it', label:'Worth grabbing', badge:'WORTH IT', cls:'badge-ok', rowCls:'' },
-    { key:'skip', label:'Leave these', badge:'SKIP', cls:'badge-skip', rowCls:'' },
-    { key:'not_sure', label:'Not sure — verify these', badge:'?', cls:'badge-unsure', rowCls:'not-sure-row' }
-  ];
+  var lbl = document.createElement('div');
+  lbl.className = 'section-label';
+  lbl.innerHTML = 'Shelf order <span class="count-pill">' + items.length + '</span>';
+  body.appendChild(lbl);
 
-  sections.forEach(function(sec) {
-    var items = accumulatedTitles[sec.key];
-    if (!items || !items.length) return;
-
-    var lbl = document.createElement('div');
-    lbl.className = 'section-label';
-    lbl.innerHTML = sec.label + ' <span class="count-pill">' + items.length + '</span>';
-    body.appendChild(lbl);
-
-    items.forEach(function(item, idx) {
-      body.appendChild(makeRow(item, sec, idx));
-    });
-
-    // Add title input
-    var addRow = document.createElement('div');
-    addRow.className = 'add-title-row';
-    addRow.innerHTML = '<input type="text" placeholder="+ add missed title..." id="add-' + sec.key + '">' +
-      '<button class="add-title-btn" onclick="addTitle(\'' + sec.key + '\')">Add</button>';
-    body.appendChild(addRow);
+  items.forEach(function(item, idx) {
+    var info = getCatInfo(item.category);
+    body.appendChild(makeRow(item, info, idx));
   });
+
+  var addRow = document.createElement('div');
+  addRow.className = 'add-title-row';
+  addRow.innerHTML = '<input type="text" placeholder="+ add missed title..." id="add-items"><button class="add-title-btn" onclick="addTitle()">Add</button>';
+  body.appendChild(addRow);
 
   renderBundles();
 }
 
-function makeRow(item, sec, idx) {
+function makeRow(item, info, idx) {
   var title = item.title || item;
   var studio = item.studio || '';
   var author = item.author || '';
@@ -370,8 +347,8 @@ function makeRow(item, sec, idx) {
   var dup = isDuplicate(title);
 
   var row = document.createElement('div');
-  row.className = 'title-row ' + sec.rowCls;
-  row.id = 'row-' + sec.key + '-' + idx;
+  row.className = 'title-row ' + info.rowCls;
+  row.id = 'row-items-' + idx;
 
   var studioLine = studio ? '<span class="title-studio">' + studio + (author ? ' · ' + author : '') + '</span>' : '';
   var saleLine = salePrice ? '<span class="title-sold">✓ You sold for $' + salePrice + '</span>' : '';
@@ -384,90 +361,86 @@ function makeRow(item, sec, idx) {
         studioLine + saleLine + dupLine +
       '</div>' +
       '<div class="row-actions">' +
-        '<span class="badge ' + sec.cls + '">' + sec.badge + '</span>' +
-        '<button class="icon-btn" title="Edit" onclick="toggleEdit(\'' + sec.key + '\',' + idx + ')">✏️</button>' +
-        '<button class="icon-btn remove" title="Remove" onclick="removeTitle(\'' + sec.key + '\',' + idx + ')">−</button>' +
+        '<span class="badge ' + info.cls + '">' + info.badge + '</span>' +
+        '<button class="icon-btn" title="Edit" onclick="toggleEdit(' + idx + ')">✏️</button>' +
+        '<button class="icon-btn remove" title="Remove" onclick="removeTitle(' + idx + ')">−</button>' +
       '</div>' +
     '</div>' +
     '<div class="title-links">' +
       '<a class="ebay-link" href="' + ebayUrl(title, studio, true) + '" target="_blank">sold ↗</a>' +
       '<a class="ebay-link" href="' + ebayUrl(title, studio, false) + '" target="_blank">active ↗</a>' +
-      '<button class="log-btn" onclick="toggleLog(\'' + sec.key + '\',' + idx + ')">log sale</button>' +
+      '<button class="log-btn" onclick="toggleLog(' + idx + ')">log sale</button>' +
     '</div>' +
-    '<div class="edit-panel" id="edit-' + sec.key + '-' + idx + '">' +
-      '<input type="text" id="edit-title-' + sec.key + '-' + idx + '" value="' + title.replace(/"/g,'&quot;') + '" placeholder="Title">' +
-      '<input type="text" id="edit-studio-' + sec.key + '-' + idx + '" value="' + studio.replace(/"/g,'&quot;') + '" placeholder="Studio / Publisher">' +
-      '<div class="edit-cats">' +
-        '<button class="edit-cat" onclick="saveEdit(\'' + sec.key + '\',' + idx + ',\'hot\')">HOT</button>' +
-        '<button class="edit-cat" onclick="saveEdit(\'' + sec.key + '\',' + idx + ',\'worth_it\')">WORTH IT</button>' +
-        '<button class="edit-cat" onclick="saveEdit(\'' + sec.key + '\',' + idx + ',\'skip\')">SKIP</button>' +
-        '<button class="edit-cat" onclick="saveEdit(\'' + sec.key + '\',' + idx + ',\'not_sure\')">NOT SURE</button>' +
+    '<div class="edit-panel" id="edit-items-' + idx + '" style="display:none;padding:8px 10px;border-top:1px solid var(--border);background:#111;">' +
+      '<input type="text" id="edit-title-items-' + idx + '" value="' + title.replace(/"/g,'&quot;') + '" placeholder="Title" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
+      '<input type="text" id="edit-studio-items-' + idx + '" value="' + studio.replace(/"/g,'&quot;') + '" placeholder="Studio / Publisher" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
+      '<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap;">' +
+        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ','HOT')">HOT</button>' +
+        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ','WORTH_IT')">WORTH IT</button>' +
+        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ','SKIP')">SKIP</button>' +
+        '<button style="padding:4px 9px;border-radius:5px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;" onclick="saveEdit(' + idx + ','NOT_SURE')">NOT SURE</button>' +
       '</div>' +
-      '<div class="edit-actions">' +
-        '<button class="edit-save" onclick="saveEdit(\'' + sec.key + '\',' + idx + ',\'' + sec.key + '\')">Save</button>' +
-        '<button class="edit-cancel" onclick="toggleEdit(\'' + sec.key + '\',' + idx + ')">Cancel</button>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button style="flex:1;padding:7px;border-radius:6px;border:none;background:var(--hot);color:#fff;font-size:12px;font-weight:600;cursor:pointer;" onclick="saveEdit(' + idx + ')">Save</button>' +
+        '<button style="padding:7px 12px;border-radius:6px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;" onclick="toggleEdit(' + idx + ')">Cancel</button>' +
       '</div>' +
     '</div>' +
-    '<div class="log-panel" id="log-' + sec.key + '-' + idx + '">' +
-      '<input type="number" step="0.01" id="log-price-' + sec.key + '-' + idx + '" placeholder="Sale price (e.g. 12.99)">' +
-      '<input type="text" id="log-notes-' + sec.key + '-' + idx + '" placeholder="Notes (optional)">' +
-      '<div class="log-actions">' +
-        '<button class="log-save" onclick="logSale(\'' + sec.key + '\',' + idx + ')">Save Sale</button>' +
-        '<button class="log-cancel" onclick="toggleLog(\'' + sec.key + '\',' + idx + ')">Cancel</button>' +
+    '<div class="log-panel" id="log-items-' + idx + '" style="display:none;padding:8px 10px;border-top:1px solid var(--border);background:#111;">' +
+      '<input type="number" step="0.01" id="log-price-items-' + idx + '" placeholder="Sale price (e.g. 12.99)" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
+      '<input type="text" id="log-notes-items-' + idx + '" placeholder="Notes (optional)" style="width:100%;background:var(--surface);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;margin-bottom:6px;">' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button style="flex:1;padding:7px;border-radius:6px;border:none;background:var(--worth);color:#fff;font-size:12px;font-weight:600;cursor:pointer;" onclick="logSale(' + idx + ')">Save Sale</button>' +
+        '<button style="padding:7px 12px;border-radius:6px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;" onclick="toggleLog(' + idx + ')">Cancel</button>' +
       '</div>' +
     '</div>';
 
   return row;
 }
 
-function toggleEdit(key, idx) {
-  var panel = document.getElementById('edit-' + key + '-' + idx);
+function toggleEdit(idx) {
+  var panel = document.getElementById('edit-items-' + idx);
   panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-  document.getElementById('log-' + key + '-' + idx).style.display = 'none';
+  document.getElementById('log-items-' + idx).style.display = 'none';
 }
 
-function toggleLog(key, idx) {
-  var panel = document.getElementById('log-' + key + '-' + idx);
+function toggleLog(idx) {
+  var panel = document.getElementById('log-items-' + idx);
   panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-  document.getElementById('edit-' + key + '-' + idx).style.display = 'none';
+  document.getElementById('edit-items-' + idx).style.display = 'none';
 }
 
-function saveEdit(fromKey, idx, toKey) {
-  var newTitle = document.getElementById('edit-title-' + fromKey + '-' + idx).value.trim();
-  var newStudio = document.getElementById('edit-studio-' + fromKey + '-' + idx).value.trim();
+function saveEdit(idx, newCat) {
+  var newTitle = document.getElementById('edit-title-items-' + idx).value.trim();
+  var newStudio = document.getElementById('edit-studio-items-' + idx).value.trim();
   if (!newTitle) return;
-
-  var item = accumulatedTitles[fromKey][idx];
-  var updated = { title: newTitle, studio: newStudio, author: item.author || '' };
-
-  accumulatedTitles[fromKey].splice(idx, 1);
-  accumulatedTitles[toKey].push(updated);
+  var item = accumulatedTitles.items[idx];
+  accumulatedTitles.items[idx] = { title: newTitle, studio: newStudio, author: item.author || '', category: newCat || item.category };
   saveSession();
   renderResults();
 }
 
-function removeTitle(key, idx) {
-  accumulatedTitles[key].splice(idx, 1);
+function removeTitle(idx) {
+  accumulatedTitles.items.splice(idx, 1);
   saveSession();
   renderResults();
 }
 
-function addTitle(key) {
-  var input = document.getElementById('add-' + key);
+function addTitle() {
+  var input = document.getElementById('add-items');
   var val = input.value.trim();
   if (!val) return;
-  accumulatedTitles[key].push({ title: val, studio: '', author: '' });
+  accumulatedTitles.items.push({ title: val, studio: '', author: '', category: 'NOT_SURE' });
   input.value = '';
   saveSession();
   renderResults();
 }
 
-async function logSale(key, idx) {
-  var item = accumulatedTitles[key][idx];
+async function logSale(idx) {
+  var item = accumulatedTitles.items[idx];
   var title = item.title || item;
   var studio = item.studio || '';
-  var price = document.getElementById('log-price-' + key + '-' + idx).value;
-  var notes = document.getElementById('log-notes-' + key + '-' + idx).value;
+  var price = document.getElementById('log-price-items-' + idx).value;
+  var notes = document.getElementById('log-notes-items-' + idx).value;
   if (!price) return;
 
   try {
@@ -477,7 +450,7 @@ async function logSale(key, idx) {
       body: JSON.stringify({ title: title, studio: studio, category: category, price: price, notes: notes })
     });
     salesHistory.push({ title: title, studio: studio, category: category, price: price });
-    toggleLog(key, idx);
+    toggleLog(idx);
     renderResults();
   } catch(e) {
     alert('Could not save sale. Try again.');
@@ -485,8 +458,7 @@ async function logSale(key, idx) {
 }
 
 function renderBundles() {
-  var all = accumulatedTitles.hot.concat(accumulatedTitles.worth_it, accumulatedTitles.skip, accumulatedTitles.not_sure);
-  var titles = all.map(function(i) { return (i.title || i).toLowerCase(); });
+  var all = accumulatedTitles.items || [];
   var bundles = [];
 
   var series = [
@@ -494,13 +466,12 @@ function renderBundles() {
     { name: 'Lord of the Rings', keywords: ['fellowship', 'two towers', 'return of the king', 'lord of the rings'] },
     { name: 'Star Wars', keywords: ['star wars', 'jedi', 'sith', 'empire strikes', 'phantom menace'] },
     { name: 'Marvel', keywords: ['iron man', 'thor', 'avengers', 'captain america', 'hulk', 'black panther', 'spider-man'] },
-    { name: 'Harry Potter', keywords: ['harry potter', 'sorcerer\'s stone', 'chamber of secrets', 'prisoner of azkaban', 'goblet of fire'] },
+    { name: 'Harry Potter', keywords: ['harry potter', "sorcerer's stone", 'chamber of secrets', 'prisoner of azkaban', 'goblet of fire'] },
     { name: 'Fast & Furious', keywords: ['fast and furious', 'fast & furious', '2 fast', 'tokyo drift'] },
     { name: 'Die Hard', keywords: ['die hard'] },
     { name: 'John Wayne Collection', keywords: ['john wayne', 'mclintock', 'true grit', 'stagecoach'] },
     { name: 'Western Lot', keywords: ['western', 'cowboy', 'outlaw', 'gunfight', 'frontier', 'ranch', 'sheriff'] },
     { name: 'War Movies Lot', keywords: ['war', 'soldier', 'battle', 'platoon', 'saving private', 'fury', 'midway'] },
-    { name: 'Comedy Lot', keywords: ['dodgeball', 'superbad', 'blades of glory', 'anchorman', 'step brothers'] },
   ];
 
   series.forEach(function(s) {
@@ -508,9 +479,7 @@ function renderBundles() {
       var t = (item.title || item).toLowerCase();
       return s.keywords.some(function(k) { return t.includes(k); });
     });
-    if (matches.length >= 2) {
-      bundles.push({ name: s.name, items: matches });
-    }
+    if (matches.length >= 2) bundles.push({ name: s.name, items: matches });
   });
 
   var bundleEl = document.getElementById('bundles');
@@ -533,19 +502,9 @@ function renderBundles() {
 
 function copyList() {
   var lines = [];
-  var sections = [
-    { key:'hot', label:'=== PULL FIRST ===' },
-    { key:'worth_it', label:'=== WORTH IT ===' },
-    { key:'skip', label:'=== SKIP ===' },
-    { key:'not_sure', label:'=== NOT SURE ===' }
-  ];
-  sections.forEach(function(sec) {
-    var items = accumulatedTitles[sec.key];
-    if (items && items.length) {
-      lines.push(sec.label);
-      items.forEach(function(i) { lines.push((i.title || i) + (i.studio ? ' (' + i.studio + ')' : '')); });
-      lines.push('');
-    }
+  var items = accumulatedTitles.items || [];
+  items.forEach(function(i) {
+    lines.push('[' + (i.category || 'SKIP') + '] ' + (i.title || i) + (i.studio ? ' (' + i.studio + ')' : ''));
   });
   navigator.clipboard.writeText(lines.join('\n'));
   var btn = document.getElementById('copy-btn');
@@ -554,7 +513,7 @@ function copyList() {
 }
 
 function reset() {
-  accumulatedTitles = { hot: [], worth_it: [], skip: [], not_sure: [] };
+  accumulatedTitles = { items: [] };
   scanCount = 0;
   clearSession();
   document.getElementById('upload-zone').style.display = 'block';
@@ -565,7 +524,6 @@ function reset() {
   document.getElementById('status').style.display = 'none';
 }
 
-// Init
 loadSession();
 loadSales();
 </script>
